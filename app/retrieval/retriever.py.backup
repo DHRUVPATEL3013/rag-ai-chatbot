@@ -1,0 +1,78 @@
+# """
+# RAG retrieval — Phase 3.
+# """
+
+
+# def get_retriever(category: str = None, language: str = None, k: int = 4):
+#     """
+#     TODO: Build a retriever from the Chroma vectorstore
+#     (embed_store.get_vectorstore()). If category/language are given,
+#     pass a metadata `filter`/`where` argument so search is scoped.
+#     Return something you can call with a query to get back matching chunks.
+#     """
+#     raise NotImplementedError
+
+
+
+"""
+RAG retrieval — Phase 3.
+"""
+
+from app.ingestion.embed_store import get_vectorstore
+
+
+def get_retriever(
+    category: str = None,
+    language: str = None,
+    k: int = 4,
+):
+    """
+    Build a Chroma retriever with optional metadata filtering.
+    """
+    vectorstore = get_vectorstore()
+
+    search_kwargs = {
+        "k": k,
+    }
+
+    filters = {}
+
+    if category:
+        filters["category"] = category
+
+    if language:
+        filters["language"] = language
+
+    if filters:
+        if len(filters) == 1:
+            search_kwargs["filter"] = filters
+        else:
+            search_kwargs["filter"] = {
+                "$and": [
+                    {"category": category},
+                    {"language": language},
+                ]
+            }
+
+    # return vectorstore.as_retriever(
+    #     search_type="similarity",
+    #     search_kwargs=search_kwargs,
+    # )
+
+    return vectorstore.as_retriever(
+        search_type="mmr",
+        search_kwargs={
+            **search_kwargs,
+            "fetch_k": 20,
+        },
+    )
+
+
+def retrieve_with_scores(query: str, k: int = 10):
+    vectorstore = get_vectorstore()
+
+    return vectorstore.similarity_search_with_score(
+        query,
+        k=k,
+    )
+

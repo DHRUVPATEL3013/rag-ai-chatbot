@@ -1,0 +1,2095 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Knowledge Base Admin</title>
+
+    <style>
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f5f7fb;
+            color: #1f2937;
+        }
+
+        .app {
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .header h1 {
+            margin: 0;
+        }
+
+        .logout {
+            background: #dc2626;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 25px;
+        }
+
+        .card h2 {
+            margin-top: 0;
+        }
+
+        .description {
+            color: #6b7280;
+            margin-bottom: 25px;
+        }
+
+        input[type="file"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            box-sizing: border-box;
+        }
+
+        .upload-button {
+            margin-top: 15px;
+            padding: 12px 20px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .upload-button:hover {
+            background: #1d4ed8;
+        }
+
+        .upload-button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        #status {
+            margin-top: 20px;
+            padding: 12px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .success {
+            display: block !important;
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .error {
+            display: block !important;
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+
+        .review-button {
+            background: #16a34a;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+
+        .review-button:hover {
+            background: #15803d;
+        }
+
+        .review-button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .review-section {
+            margin-top: 25px;
+        }
+
+        .review-item {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+        }
+
+        .review-item h3 {
+            margin-top: 0;
+        }
+
+        .review-question {
+            margin-bottom: 15px;
+        }
+
+        .review-answer {
+            background: #f9fafb;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .review-meta {
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .review-actions {
+            margin-top: 15px;
+        }
+
+        .approve-button,
+        .reject-button {
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            color: white;
+        }
+
+        .approve-button {
+            background: #2563eb;
+        }
+
+        .reject-button {
+            background: #dc2626;
+            margin-left: 8px;
+        }
+
+        .empty-review {
+            padding: 20px;
+            background: #f9fafb;
+            border-radius: 8px;
+            color: #6b7280;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<div class="header">
+    <h1>Knowledge Base Admin</h1>
+
+    <div>
+        <button
+            id="reviewButton"
+            class="review-button"
+        >
+            Review Feedback
+        </button>
+
+        <button
+            id="logoutButton"
+            class="logout"
+        >
+            Logout
+        </button>
+    </div>
+
+
+
+    <div class="card">
+
+        <h2>Upload Document</h2>
+
+        <div class="description">
+
+            Upload internal documents to the RAG knowledge base.
+
+            Supported formats:
+            PDF, DOCX, XLSX, PNG, JPG, JPEG.
+
+        </div>
+
+
+        <form id="uploadForm">
+
+            <input
+                id="documentFile"
+                type="file"
+                accept=".pdf,.docx,.xlsx,.png,.jpg,.jpeg"
+                required
+            >
+
+
+            <button
+                id="uploadButton"
+                class="upload-button"
+                type="submit"
+            >
+                Upload Document
+            </button>
+
+        </form>
+
+
+        <div id="status"></div>
+
+    </div>
+
+</div>
+
+
+<script>
+
+const uploadForm =
+    document.getElementById("uploadForm");
+
+const documentFile =
+    document.getElementById("documentFile");
+
+const uploadButton =
+    document.getElementById("uploadButton");
+
+const status =
+    document.getElementById("status");
+
+const logoutButton =
+    document.getElementById("logoutButton");
+
+
+/*
+    Check whether the admin session
+    is still valid.
+*/
+
+async function checkSession() {
+
+    const response =
+        await fetch("/admin/session");
+
+    if (!response.ok) {
+
+        window.location.href =
+            "/admin/login.html";
+
+    }
+
+}
+
+
+checkSession();
+
+
+/*
+    Upload document.
+*/
+
+uploadForm.addEventListener(
+    "submit",
+    async function(event) {
+
+        event.preventDefault();
+
+        const file =
+            documentFile.files[0];
+
+        if (!file) {
+            return;
+        }
+
+
+        const formData =
+            new FormData();
+
+        formData.append(
+            "file",
+            file
+        );
+
+
+        uploadButton.disabled = true;
+
+        uploadButton.textContent =
+            "Processing...";
+
+        status.className = "";
+
+        status.textContent =
+            "Uploading and indexing document...";
+
+
+        try {
+
+            const response =
+                await fetch(
+                    "/admin/upload",
+                    {
+                        method: "POST",
+                        body: formData
+                    }
+                );
+
+
+            const data =
+                await response.json();
+
+
+            if (response.status === 401) {
+
+                window.location.href =
+                    "/admin/login.html";
+
+                return;
+
+            }
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    data.detail ||
+                    "Upload failed."
+                );
+
+            }
+
+
+            status.className =
+                "success";
+
+
+            if (
+                data.status ===
+                "already_exists"
+            ) {
+
+                status.textContent =
+                    `${data.filename} already exists. No new vectors were added.`;
+
+            } else {
+
+                status.textContent =
+                    `${data.filename} uploaded successfully. ` +
+                    `${data.chunks_added} chunks were added to ChromaDB.`;
+
+            }
+
+
+            documentFile.value = "";
+
+
+        } catch (error) {
+
+            status.className =
+                "error";
+
+            status.textContent =
+                error.message;
+
+        } finally {
+
+            uploadButton.disabled = false;
+
+            uploadButton.textContent =
+                "Upload Document";
+
+        }
+
+    }
+);
+
+
+/*
+    Logout.
+*/
+
+logoutButton.addEventListener(
+    "click",
+    async function() {
+
+        await fetch(
+            "/admin/logout",
+            {
+                method: "POST"
+            }
+        );
+
+        window.location.href =
+            "/admin/login.html";
+
+    }
+);
+
+</script>
+
+</body>
+</html> -->
+
+
+
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Knowledge Base Admin</title>
+
+    <style>
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f5f7fb;
+            color: #1f2937;
+        }
+
+        .app {
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .header h1 {
+            margin: 0;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            cursor: pointer;
+        }
+
+        .logout {
+            background: #dc2626;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+        }
+
+        .logout:hover {
+            background: #b91c1c;
+        }
+
+        .review-button {
+            background: #16a34a;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+        }
+
+        .review-button:hover {
+            background: #15803d;
+        }
+
+        .review-button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 25px;
+        }
+
+        .card h2 {
+            margin-top: 0;
+        }
+
+        .description {
+            color: #6b7280;
+            margin-bottom: 25px;
+        }
+
+        input[type="file"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            box-sizing: border-box;
+        }
+
+        .upload-button {
+            margin-top: 15px;
+            padding: 12px 20px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 8px;
+        }
+
+        .upload-button:hover {
+            background: #1d4ed8;
+        }
+
+        .upload-button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        #status {
+            margin-top: 20px;
+            padding: 12px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .success {
+            display: block !important;
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .error {
+            display: block !important;
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        /*
+         * Review section
+         */
+
+        .review-section {
+            margin-top: 25px;
+            display: none;
+        }
+
+        .review-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .review-header h2 {
+            margin: 0;
+        }
+
+        /*
+         * Status filters
+         */
+
+        .filter-buttons {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .filter-button {
+            background: #f3f4f6;
+            color: #374151;
+            border: 1px solid #d1d5db;
+            padding: 9px 14px;
+            border-radius: 8px;
+        }
+
+        .filter-button:hover {
+            background: #e5e7eb;
+        }
+
+        .filter-button.active {
+            background: #2563eb;
+            color: white;
+            border-color: #2563eb;
+        }
+
+        /*
+         * Review item
+         */
+
+        .review-item {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+        }
+
+        .review-item h3 {
+            margin-top: 0;
+        }
+
+        .review-label {
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .review-question {
+            margin-bottom: 20px;
+        }
+
+        .review-question-content {
+            background: #f9fafb;
+            padding: 15px;
+            border-radius: 8px;
+            white-space: pre-wrap;
+        }
+
+        .review-answer {
+            margin-bottom: 20px;
+        }
+
+        .original-answer {
+            background: #f9fafb;
+            padding: 15px;
+            border-radius: 8px;
+            white-space: pre-wrap;
+        }
+
+        .improved-answer {
+            width: 100%;
+            min-height: 140px;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+            font-size: 15px;
+            resize: vertical;
+        }
+
+        .improved-answer:focus {
+            outline: none;
+            border-color: #2563eb;
+        }
+
+        .review-meta {
+            color: #6b7280;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .review-actions {
+            margin-top: 18px;
+        }
+
+        .approve-button,
+        .reject-button {
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            color: white;
+        }
+
+        .approve-button {
+            background: #2563eb;
+        }
+
+        .approve-button:hover {
+            background: #1d4ed8;
+        }
+
+        .reject-button {
+            background: #dc2626;
+            margin-left: 8px;
+        }
+
+        .reject-button:hover {
+            background: #b91c1c;
+        }
+
+        .approve-button:disabled,
+        .reject-button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .empty-review {
+            padding: 20px;
+            background: #f9fafb;
+            border-radius: 8px;
+            color: #6b7280;
+        }
+
+        .review-status {
+            color: #6b7280;
+            margin-bottom: 15px;
+        }
+
+        .loading-more {
+            text-align: center;
+            padding: 20px;
+            color: #6b7280;
+        }
+
+        .pagination-end {
+            text-align: center;
+            padding: 15px;
+            color: #9ca3af;
+            font-size: 14px;
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+<div class="app">
+
+    <!-- =====================================================
+         HEADER
+         ===================================================== -->
+
+    <div class="header">
+
+        <h1>
+            Knowledge Base Admin
+        </h1>
+
+        <div class="header-actions">
+
+            <button
+                id="reviewButton"
+                class="review-button"
+            >
+                Review Feedback
+            </button>
+
+            <button
+                id="logoutButton"
+                class="logout"
+            >
+                Logout
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- =====================================================
+         UPLOAD
+         ===================================================== -->
+
+    <div class="card">
+
+        <h2>
+            Upload Document
+        </h2>
+
+        <div class="description">
+
+            Upload internal documents to the RAG knowledge base.
+
+            Supported formats:
+
+            PDF, DOCX, XLSX, PNG, JPG, JPEG.
+
+        </div>
+
+
+        <form id="uploadForm">
+
+            <input
+                id="documentFile"
+                type="file"
+                accept=".pdf,.docx,.xlsx,.png,.jpg,.jpeg"
+                required
+            >
+
+            <button
+                id="uploadButton"
+                class="upload-button"
+                type="submit"
+            >
+                Upload Document
+            </button>
+
+        </form>
+
+
+        <div id="status"></div>
+
+    </div>
+
+
+    <!-- =====================================================
+         REVIEW SECTION
+         ===================================================== -->
+
+    <div
+        id="reviewSection"
+        class="card review-section"
+    >
+
+        <div class="review-header">
+
+            <h2>
+                Feedback Review
+            </h2>
+
+        </div>
+
+
+        <!-- =================================================
+             STATUS FILTERS
+             ================================================= -->
+
+        <div class="filter-buttons">
+
+            <button
+                class="filter-button"
+                data-status="all"
+            >
+                All
+            </button>
+
+            <button
+                class="filter-button active"
+                data-status="pending"
+            >
+                Pending
+            </button>
+
+            <button
+                class="filter-button"
+                data-status="approved"
+            >
+                Approved
+            </button>
+
+            <button
+                class="filter-button"
+                data-status="rejected"
+            >
+                Rejected
+            </button>
+
+        </div>
+
+
+        <div
+            id="reviewStatus"
+            class="review-status"
+        >
+            Showing pending feedback.
+        </div>
+
+
+        <div id="reviewList"></div>
+
+
+        <div
+            id="loadingMore"
+            class="loading-more"
+            style="display: none;"
+        >
+            Loading more...
+        </div>
+
+
+        <div
+            id="paginationEnd"
+            class="pagination-end"
+            style="display: none;"
+        >
+            No more items.
+        </div>
+
+    </div>
+
+</div>
+
+
+<script>
+
+/* =========================================================
+   ELEMENTS
+   ========================================================= */
+
+const uploadForm =
+    document.getElementById("uploadForm");
+
+const documentFile =
+    document.getElementById("documentFile");
+
+const uploadButton =
+    document.getElementById("uploadButton");
+
+const status =
+    document.getElementById("status");
+
+const logoutButton =
+    document.getElementById("logoutButton");
+
+const reviewButton =
+    document.getElementById("reviewButton");
+
+const reviewSection =
+    document.getElementById("reviewSection");
+
+const reviewList =
+    document.getElementById("reviewList");
+
+const reviewStatus =
+    document.getElementById("reviewStatus");
+
+const loadingMore =
+    document.getElementById("loadingMore");
+
+const paginationEnd =
+    document.getElementById("paginationEnd");
+
+const filterButtons =
+    document.querySelectorAll(".filter-button");
+
+
+/* =========================================================
+   REVIEW STATE
+   ========================================================= */
+
+/*
+ * Keep page size = 1 while testing pagination.
+ *
+ * Later:
+ *
+ *     pageSize = 10;
+ */
+
+let pageSize = 1;
+
+let currentPage = 0;
+
+let currentStatus = "pending";
+
+let loadingReviews = false;
+
+let hasMoreReviews = true;
+
+let reviewSectionOpened = false;
+
+
+/* =========================================================
+   ESCAPE HTML
+   ========================================================= */
+
+function escapeHtml(value) {
+
+    const div =
+        document.createElement("div");
+
+    div.textContent =
+        value ?? "";
+
+    return div.innerHTML;
+}
+
+
+/* =========================================================
+   SESSION CHECK
+   ========================================================= */
+
+async function checkSession() {
+
+    try {
+
+        const response =
+            await fetch(
+                "/admin/session"
+            );
+
+        if (!response.ok) {
+
+            window.location.href =
+                "/admin/login.html";
+
+        }
+
+    } catch (error) {
+
+        window.location.href =
+            "/admin/login.html";
+
+    }
+}
+
+checkSession();
+
+
+/* =========================================================
+   UPLOAD DOCUMENT
+   ========================================================= */
+
+uploadForm.addEventListener(
+    "submit",
+    async function(event) {
+
+        event.preventDefault();
+
+        const file =
+            documentFile.files[0];
+
+        if (!file) {
+            return;
+        }
+
+
+        const formData =
+            new FormData();
+
+        formData.append(
+            "file",
+            file
+        );
+
+
+        uploadButton.disabled = true;
+
+        uploadButton.textContent =
+            "Processing...";
+
+        status.className = "";
+
+        status.style.display =
+            "block";
+
+        status.textContent =
+            "Uploading and indexing document...";
+
+
+        try {
+
+            const response =
+                await fetch(
+                    "/admin/upload",
+                    {
+                        method: "POST",
+                        body: formData
+                    }
+                );
+
+
+            const data =
+                await response.json();
+
+
+            if (response.status === 401) {
+
+                window.location.href =
+                    "/admin/login.html";
+
+                return;
+            }
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    data.detail ||
+                    "Upload failed."
+                );
+
+            }
+
+
+            status.className =
+                "success";
+
+
+            if (
+                data.status ===
+                "already_exists"
+            ) {
+
+                status.textContent =
+                    `${data.filename} already exists. ` +
+                    `No new vectors were added.`;
+
+            } else {
+
+                status.textContent =
+                    `${data.filename} uploaded successfully. ` +
+                    `${data.chunks_added} chunks were added to ChromaDB.`;
+
+            }
+
+
+            documentFile.value = "";
+
+
+        } catch (error) {
+
+            status.className =
+                "error";
+
+            status.textContent =
+                error.message;
+
+
+        } finally {
+
+            uploadButton.disabled =
+                false;
+
+            uploadButton.textContent =
+                "Upload Document";
+
+        }
+
+    }
+);
+
+
+/* =========================================================
+   LOAD REVIEW QUEUE
+   ========================================================= */
+
+async function loadReviewQueue(
+    reset = false
+) {
+
+    if (loadingReviews) {
+        return;
+    }
+
+
+    if (
+        !reset &&
+        !hasMoreReviews
+    ) {
+        return;
+    }
+
+
+    if (reset) {
+
+        currentPage = 0;
+
+        hasMoreReviews = true;
+
+        reviewList.innerHTML = "";
+
+        paginationEnd.style.display =
+            "none";
+
+        reviewStatus.textContent =
+            `Loading ${currentStatus} feedback...`;
+
+    }
+
+
+    loadingReviews = true;
+
+    loadingMore.style.display =
+        "block";
+
+
+    try {
+
+        const nextPage =
+            currentPage + 1;
+
+
+        let url =
+            `/admin/review-queue` +
+            `?page=${nextPage}` +
+            `&page_size=${pageSize}` +
+            `&status=${encodeURIComponent(currentStatus)}`;
+
+
+        console.log(
+            "Loading review queue:",
+            url
+        );
+
+
+        const response =
+            await fetch(url);
+
+
+        if (response.status === 401) {
+
+            window.location.href =
+                "/admin/login.html";
+
+            return;
+        }
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.detail ||
+                "Failed to load review queue."
+            );
+
+        }
+
+
+        const items =
+            data.items || [];
+
+
+        currentPage =
+            nextPage;
+
+
+        /*
+         * The backend gives us total_pages.
+         *
+         * This is more reliable than only checking
+         * items.length < pageSize.
+         */
+
+        if (
+            data.total_pages &&
+            currentPage >= data.total_pages
+        ) {
+
+            hasMoreReviews = false;
+
+        } else if (
+            items.length < pageSize
+        ) {
+
+            hasMoreReviews = false;
+
+        }
+
+
+        /*
+         * First page has no records.
+         */
+
+        if (
+            currentPage === 1 &&
+            items.length === 0
+        ) {
+
+            reviewList.innerHTML = `
+
+                <div class="empty-review">
+
+                    No ${escapeHtml(
+                        currentStatus
+                    )} feedback found.
+
+                </div>
+
+            `;
+
+            reviewStatus.textContent =
+                `No ${currentStatus} feedback found.`;
+
+            paginationEnd.style.display =
+                "none";
+
+            return;
+
+        }
+
+
+        /*
+         * Render records.
+         */
+
+        items.forEach(
+            item => {
+
+                renderReviewItem(item);
+
+            }
+        );
+
+
+        /*
+         * Number of records currently
+         * visible on screen.
+         */
+
+        const count =
+            reviewList.querySelectorAll(
+                ".review-item"
+            ).length;
+
+
+        reviewStatus.textContent =
+            `Showing ${count} ${currentStatus} item(s). ` +
+            `Page ${currentPage}`;
+
+
+        if (
+            data.total !== undefined
+        ) {
+
+            reviewStatus.textContent +=
+                ` of ${data.total}`;
+
+        }
+
+
+        reviewStatus.textContent += ".";
+
+
+        if (!hasMoreReviews) {
+
+            paginationEnd.style.display =
+                "block";
+
+        }
+
+
+    } catch (error) {
+
+        console.error(
+            "Review queue error:",
+            error
+        );
+
+        reviewStatus.textContent =
+            error.message;
+
+
+    } finally {
+
+        loadingReviews =
+            false;
+
+        loadingMore.style.display =
+            "none";
+
+    }
+
+}
+
+
+/* =========================================================
+   RENDER REVIEW ITEM
+   ========================================================= */
+
+function renderReviewItem(item) {
+
+    const reviewItem =
+        document.createElement("div");
+
+    reviewItem.className =
+        "review-item";
+
+    reviewItem.dataset.reviewId =
+        item.id;
+
+
+    /*
+     * For pending reviews:
+     *
+     * improved_answer
+     *      OR
+     * ai_answer
+     *
+     * This means the admin can immediately
+     * edit the original answer.
+     */
+
+    const improvedAnswer =
+        item.improved_answer ||
+        item.ai_answer ||
+        "";
+
+
+    let actionsHtml = "";
+
+
+    /*
+     * Only pending reviews can be
+     * approved or rejected.
+     */
+
+    if (
+        item.status ===
+        "pending"
+    ) {
+
+        actionsHtml = `
+
+            <div class="review-actions">
+
+                <button
+                    class="approve-button"
+                    onclick="approveReview(${item.id})"
+                >
+                    Approve
+                </button>
+
+                <button
+                    class="reject-button"
+                    onclick="rejectReview(${item.id})"
+                >
+                    Reject
+                </button>
+
+            </div>
+
+        `;
+
+    }
+
+
+    /*
+     * Approved / rejected reviews
+     * are read-only.
+     */
+
+    const improvedAnswerHtml =
+        item.status === "pending"
+
+        ? `
+
+            <textarea
+                id="improved-answer-${item.id}"
+                class="improved-answer"
+                placeholder="Edit the answer before approving..."
+            >${escapeHtml(
+                improvedAnswer
+            )}</textarea>
+
+        `
+
+        : `
+
+            <div class="original-answer">
+
+                ${escapeHtml(
+                    item.improved_answer ||
+                    "No improved answer was saved."
+                )}
+
+            </div>
+
+        `;
+
+
+    reviewItem.innerHTML = `
+
+        <h3>
+            Review #${item.id}
+        </h3>
+
+
+        <!-- USER QUESTION -->
+
+        <div class="review-question">
+
+            <div class="review-label">
+                User Question
+            </div>
+
+            <div class="review-question-content">
+
+                ${escapeHtml(
+                    item.question
+                )}
+
+            </div>
+
+        </div>
+
+
+        <!-- ORIGINAL AI ANSWER -->
+
+        <div class="review-answer">
+
+            <div class="review-label">
+                Original AI Answer
+            </div>
+
+            <div class="original-answer">
+
+                ${escapeHtml(
+                    item.ai_answer
+                )}
+
+            </div>
+
+        </div>
+
+
+        <!-- IMPROVED ANSWER -->
+
+        <div class="review-answer">
+
+            <div class="review-label">
+                Improved Answer
+            </div>
+
+            ${improvedAnswerHtml}
+
+        </div>
+
+
+        <!-- META -->
+
+        <div class="review-meta">
+
+            Status:
+            ${escapeHtml(
+                item.status
+            )}
+
+            <br>
+
+            User Message ID:
+            ${item.user_message_id ?? "N/A"}
+
+            <br>
+
+            Assistant Message ID:
+            ${item.assistant_message_id ?? "N/A"}
+
+            <br>
+
+            Review Session ID:
+            ${item.chat_session_id ?? "N/A"}
+
+            ${
+                item.reviewed_by
+                ? `
+                    <br>
+                    Reviewed By:
+                    ${escapeHtml(item.reviewed_by)}
+                `
+                : ""
+            }
+
+            ${
+                item.reviewed_at
+                ? `
+                    <br>
+                    Reviewed At:
+                    ${escapeHtml(item.reviewed_at)}
+                `
+                : ""
+            }
+
+        </div>
+
+
+        ${actionsHtml}
+
+    `;
+
+
+    reviewList.appendChild(
+        reviewItem
+    );
+
+}
+
+
+/* =========================================================
+   APPROVE REVIEW
+   ========================================================= */
+
+async function approveReview(
+    reviewId
+) {
+
+    const textarea =
+        document.getElementById(
+            `improved-answer-${reviewId}`
+        );
+
+
+    if (!textarea) {
+
+        alert(
+            "Improved answer field not found."
+        );
+
+        return;
+    }
+
+
+    const improvedAnswer =
+        textarea.value.trim();
+
+
+    if (!improvedAnswer) {
+
+        alert(
+            "Please provide an improved answer before approving."
+        );
+
+        textarea.focus();
+
+        return;
+    }
+
+
+    const confirmed =
+        confirm(
+            "Approve this answer and add it to the knowledge base?"
+        );
+
+
+    if (!confirmed) {
+        return;
+    }
+
+
+    /*
+     * Disable buttons while request
+     * is running.
+     */
+
+    const reviewItem =
+        reviewList.querySelector(
+            `[data-review-id="${reviewId}"]`
+        );
+
+
+    const buttons =
+        reviewItem
+        ? reviewItem.querySelectorAll(
+            "button"
+        )
+        : [];
+
+
+    buttons.forEach(
+        button => {
+            button.disabled = true;
+        }
+    );
+
+
+    try {
+
+        const response =
+            await fetch(
+                `/admin/review-queue/${reviewId}/approve`,
+                {
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body: JSON.stringify({
+                        improved_answer:
+                            improvedAnswer
+                    })
+                }
+            );
+
+
+        if (response.status === 401) {
+
+            window.location.href =
+                "/admin/login.html";
+
+            return;
+        }
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.detail ||
+                "Failed to approve review."
+            );
+
+        }
+
+
+        /*
+         * Reload from page 1.
+         *
+         * This is important because:
+         *
+         * page size = 1
+         *
+         * If we simply remove the item,
+         * pagination can become incorrect.
+         */
+
+        await loadReviewQueue(true);
+
+
+    } catch (error) {
+
+        console.error(
+            "Approve error:",
+            error
+        );
+
+        alert(
+            error.message
+        );
+
+
+        buttons.forEach(
+            button => {
+                button.disabled = false;
+            }
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   REJECT REVIEW
+   ========================================================= */
+
+async function rejectReview(
+    reviewId
+) {
+
+    const confirmed =
+        confirm(
+            "Reject this feedback item?"
+        );
+
+
+    if (!confirmed) {
+        return;
+    }
+
+
+    const reviewItem =
+        reviewList.querySelector(
+            `[data-review-id="${reviewId}"]`
+        );
+
+
+    const buttons =
+        reviewItem
+        ? reviewItem.querySelectorAll(
+            "button"
+        )
+        : [];
+
+
+    buttons.forEach(
+        button => {
+            button.disabled = true;
+        }
+    );
+
+
+    try {
+
+        const response =
+            await fetch(
+                `/admin/review-queue/${reviewId}/reject`,
+                {
+                    method: "POST"
+                }
+            );
+
+
+        if (response.status === 401) {
+
+            window.location.href =
+                "/admin/login.html";
+
+            return;
+        }
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.detail ||
+                "Failed to reject review."
+            );
+
+        }
+
+
+        /*
+         * Reload page 1.
+         */
+
+        await loadReviewQueue(true);
+
+
+    } catch (error) {
+
+        console.error(
+            "Reject error:",
+            error
+        );
+
+        alert(
+            error.message
+        );
+
+
+        buttons.forEach(
+            button => {
+                button.disabled = false;
+            }
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   REVIEW BUTTON
+   ========================================================= */
+
+reviewButton.addEventListener(
+    "click",
+    async function() {
+
+        reviewSection.style.display =
+            "block";
+
+        reviewSectionOpened =
+            true;
+
+
+        /*
+         * Default filter:
+         *
+         * Pending
+         */
+
+        currentStatus =
+            "pending";
+
+
+        filterButtons.forEach(
+            button => {
+
+                button.classList.toggle(
+                    "active",
+                    button.dataset.status ===
+                        currentStatus
+                );
+
+            }
+        );
+
+
+        await loadReviewQueue(
+            true
+        );
+
+
+        reviewSection.scrollIntoView({
+            behavior: "smooth"
+        });
+
+    }
+);
+
+
+/* =========================================================
+   STATUS FILTERS
+   ========================================================= */
+
+filterButtons.forEach(
+    button => {
+
+        button.addEventListener(
+            "click",
+            async function() {
+
+                const selectedStatus =
+                    button.dataset.status;
+
+
+                if (
+                    selectedStatus ===
+                    currentStatus
+                ) {
+
+                    return;
+
+                }
+
+
+                currentStatus =
+                    selectedStatus;
+
+
+                filterButtons.forEach(
+                    filterButton => {
+
+                        filterButton.classList.toggle(
+                            "active",
+                            filterButton.dataset.status ===
+                                currentStatus
+                        );
+
+                    }
+                );
+
+
+                await loadReviewQueue(
+                    true
+                );
+
+            }
+        );
+
+    }
+);
+
+
+/* =========================================================
+   INFINITE SCROLL / PAGINATION
+   ========================================================= */
+
+window.addEventListener(
+    "scroll",
+    async function() {
+
+        /*
+         * Do nothing until Review Feedback
+         * has been opened.
+         */
+
+        if (
+            !reviewSectionOpened
+        ) {
+
+            return;
+
+        }
+
+
+        if (
+            loadingReviews
+        ) {
+
+            return;
+
+        }
+
+
+        if (
+            !hasMoreReviews
+        ) {
+
+            return;
+
+        }
+
+
+        const scrollPosition =
+            window.innerHeight +
+            window.scrollY;
+
+
+        const pageHeight =
+            document.documentElement
+                .scrollHeight;
+
+
+        /*
+         * When user gets within
+         * 300px of the bottom,
+         * load next page.
+         */
+
+        if (
+            scrollPosition >=
+            pageHeight - 300
+        ) {
+
+            await loadReviewQueue(
+                false
+            );
+
+        }
+
+    }
+);
+
+
+/* =========================================================
+   LOGOUT
+   ========================================================= */
+
+logoutButton.addEventListener(
+    "click",
+    async function() {
+
+        try {
+
+            await fetch(
+                "/admin/logout",
+                {
+                    method: "POST"
+                }
+            );
+
+        } finally {
+
+            window.location.href =
+                "/admin/login.html";
+
+        }
+
+    }
+);
+
+</script>
+
+</body>
+
+</html>

@@ -1,0 +1,28 @@
+services:
+  chatbot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: chatbot_rag_ai
+
+    ports:
+      - "4019:8000"
+
+    env_file:
+      - .env
+
+    volumes:
+      - chatbot_chroma:/app/data/chroma
+
+    networks:
+      - database-net
+
+    restart: unless-stopped
+
+volumes:
+  chatbot_chroma:
+
+networks:
+  database-net:
+    external: true
